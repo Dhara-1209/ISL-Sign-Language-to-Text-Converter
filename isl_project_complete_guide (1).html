@@ -1,0 +1,497 @@
+
+<h2 class="sr-only">Complete guide for the Indian Sign Language to Text Converter project — dataset, tech stack, workflow, folder structure, dependencies, and 4-week plan</h2>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans)}
+.tabs{display:flex;gap:4px;border-bottom:0.5px solid var(--color-border-tertiary);margin-bottom:1.5rem;flex-wrap:wrap}
+.tab{padding:8px 16px;font-size:13px;font-weight:500;border:none;background:none;cursor:pointer;color:var(--color-text-secondary);border-bottom:2px solid transparent;transition:all 0.15s}
+.tab.active{color:var(--color-text-info);border-bottom-color:var(--color-border-info)}
+.panel{display:none}.panel.active{display:block}
+.section{margin-bottom:2rem}
+.section-title{font-size:13px;font-weight:500;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.75rem}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem 1.25rem;margin-bottom:10px}
+.card-title{font-size:14px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px}
+.card-desc{font-size:13px;color:var(--color-text-secondary);line-height:1.6}
+.badge{display:inline-block;font-size:11px;padding:3px 10px;border-radius:10px;font-weight:500}
+.badge-blue{background:var(--color-background-info);color:var(--color-text-info)}
+.badge-green{background:var(--color-background-success);color:var(--color-text-success)}
+.badge-amber{background:var(--color-background-warning);color:var(--color-text-warning)}
+.badge-purple{background:#EEEDFE;color:#3C3489}
+.badge-teal{background:#E1F5EE;color:#0F6E56}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.code-block{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:0.75rem 1rem;font-family:var(--font-mono);font-size:12px;color:var(--color-text-primary);line-height:1.8;white-space:pre;overflow-x:auto;margin-bottom:10px}
+.inline-code{font-family:var(--font-mono);font-size:12px;background:var(--color-background-secondary);padding:2px 6px;border-radius:4px;color:var(--color-text-primary)}
+.week-card{border-radius:var(--border-radius-lg);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);margin-bottom:12px;overflow:hidden}
+.week-header{padding:10px 1.25rem;display:flex;align-items:center;gap:10px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.week-num{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;flex-shrink:0}
+.week-title{font-size:14px;font-weight:500;color:var(--color-text-primary)}
+.week-subtitle{font-size:12px;color:var(--color-text-secondary)}
+.task-list{padding:0.75rem 1.25rem;display:flex;flex-direction:column;gap:6px}
+.task{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--color-text-secondary);line-height:1.5}
+.task-dot{width:6px;height:6px;border-radius:50%;margin-top:6px;flex-shrink:0}
+.pipeline-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:1rem}
+.pipe-box{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:8px 12px;text-align:center;font-size:12px;font-weight:500;color:var(--color-text-primary);min-width:80px}
+.pipe-arrow{color:var(--color-text-tertiary);font-size:16px;flex-shrink:0}
+.pipe-sub{font-size:10px;color:var(--color-text-secondary);font-weight:400;display:block;margin-top:2px}
+.folder-line{font-family:var(--font-mono);font-size:12px;color:var(--color-text-secondary);line-height:2;padding-left:4px}
+.folder-line .dir{color:var(--color-text-info);font-weight:500}
+.folder-line .comment{color:var(--color-text-tertiary)}
+.term-row{display:flex;flex-direction:column;gap:2px;padding:10px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+.term-row:last-child{border-bottom:none}
+.term-name{font-size:13px;font-weight:500;color:var(--color-text-primary)}
+.term-def{font-size:13px;color:var(--color-text-secondary);line-height:1.5}
+.resume-box{background:var(--color-background-secondary);border-left:3px solid var(--color-border-info);border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;padding:0.75rem 1rem;font-size:13px;color:var(--color-text-secondary);line-height:1.7;margin-top:0.5rem}
+</style>
+
+<div style="padding:1rem 0">
+<div class="tabs" id="tabs">
+  <button class="tab active" data-tab="overview">Overview</button>
+  <button class="tab" data-tab="dataset">Dataset</button>
+  <button class="tab" data-tab="terms">Tech terms</button>
+  <button class="tab" data-tab="stack">Dependencies</button>
+  <button class="tab" data-tab="workflow">Workflow</button>
+  <button class="tab" data-tab="folder">Folder structure</button>
+  <button class="tab" data-tab="plan">4-week plan</button>
+  <button class="tab" data-tab="resume">Resume</button>
+</div>
+
+<div id="overview" class="panel active">
+  <div class="section">
+    <div class="section-title">What you're building</div>
+    <div class="card">
+      <div class="card-title">Indian Sign Language (ISL) → Text + Speech Converter</div>
+      <div class="card-desc" style="margin-top:6px">A real-time web app where a hearing-impaired person signs into their webcam and the system instantly recognizes the gesture, converts it to text, builds words letter-by-letter, and speaks them aloud. Built specifically for ISL — not ASL — which makes it rare and impactful.</div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">What makes it stand out</div>
+    <div class="grid2">
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><i class="ti ti-india" style="font-size:20px;color:#185FA5" aria-hidden="true"></i><div class="card-title">ISL-specific</div></div>
+        <div class="card-desc">Most projects use ASL. ISL has far less open-source tooling, making yours genuinely useful for India's 63M+ hearing-impaired population.</div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><i class="ti ti-eye" style="font-size:20px;color:#0F6E56" aria-hidden="true"></i><div class="card-title">Landmark-based (not pixel)</div></div>
+        <div class="card-desc">Uses 21 hand coordinate points instead of raw images — works across lighting, skin tone, and backgrounds. Smart architectural choice.</div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><i class="ti ti-volume" style="font-size:20px;color:#854F0B" aria-hidden="true"></i><div class="card-title">Text-to-speech output</div></div>
+        <div class="card-desc">Words are spoken aloud via pyttsx3 when confidence exceeds 80% — adds real accessibility value beyond just showing text on screen.</div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><i class="ti ti-world" style="font-size:20px;color:#533489" aria-hidden="true"></i><div class="card-title">Deployed live</div></div>
+        <div class="card-desc">Deployed on Hugging Face Spaces — gives you a public URL to paste into your resume and demo live in interviews.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="dataset" class="panel">
+  <div class="section">
+    <div class="section-title">Primary dataset (use this)</div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div>
+          <div class="card-title">ISL Alphabet Dataset — Kaggle</div>
+          <div class="card-desc" style="margin-top:4px">Search "Indian Sign Language ISLRTC" on Kaggle. Covers A–Z alphabets of ISL with thousands of images. Free, ready to use, no sign-up hassle.</div>
+        </div>
+        <span class="badge badge-green">Recommended</span>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
+        <span class="badge badge-blue">~26 classes (A–Z)</span>
+        <span class="badge badge-blue">Free on Kaggle</span>
+        <span class="badge badge-blue">Image format</span>
+      </div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">Alternative / advanced datasets</div>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">INCLUDE Dataset</div>
+        <div class="card-desc">0.27M frames, 4,287 videos, 263 ISL word signs across 15 categories. Very impressive but harder to work with in 4 weeks. Use only if you want a word-level system.</div>
+        <div style="margin-top:8px"><span class="badge badge-amber">Advanced</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">ASL MNIST (fallback)</div>
+        <div class="card-desc">If ISL dataset is hard to find, start with ASL MNIST (28×28 grayscale images, A–Y letters). Get the pipeline working first, then swap in ISL data.</div>
+        <div style="margin-top:8px"><span class="badge badge-purple">Fallback only</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">Option: collect your own data (extra impressive)</div>
+    <div class="card">
+      <div class="card-desc">Write a short Python script using OpenCV + MediaPipe that records landmark coordinates (63 numbers per frame) for each sign as you perform it in front of your webcam. Do 100 samples per letter × 26 letters = 2,600 samples. This gives you a custom dataset you genuinely own and can talk about in interviews. This approach is landmark-based (not image-based) and is cleaner to train on.</div>
+      <div style="margin-top:8px"><span class="badge badge-teal">Unique talking point</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="terms" class="panel">
+  <div class="section">
+    <div class="section-title">Core tech terms you must know cold</div>
+    <div class="card" style="padding:0.5rem 1.25rem">
+      <div class="term-row">
+        <div class="term-name">MediaPipe</div>
+        <div class="term-def">Google's open-source framework for real-time processing of video/audio. In your project, it detects your hand in every webcam frame and returns 21 landmark points (x, y, z coordinates). You never deal with raw pixels — MediaPipe handles all that.</div>
+      </div>
+      <div class="term-row">
+        <div class="term-name">Hand landmarks</div>
+        <div class="term-def">The 21 key points MediaPipe detects on every hand — fingertips, knuckles, wrist, etc. Each point has x, y, z values normalized 0–1. So one hand = 63 numbers total. These numbers become your model's input features.</div>
+      </div>
+      <div class="term-row">
+        <div class="term-name">CNN (Convolutional Neural Network)</div>
+        <div class="term-def">A type of neural network designed for image data. It learns spatial patterns — edges, shapes, textures. If you're training on images (not landmarks), you use a CNN. Think of it as a network with "visual filters" that scan across images.</div>
+      </div>
+      <div class="term-row">
+        <div class="term-name">LSTM (Long Short-Term Memory)</div>
+        <div class="term-def">A neural network type that remembers sequences over time. Used for dynamic gestures (signs that involve movement). You don't need this for static letter recognition — but knowing the term impresses in interviews.</div>
+      </div>
+      <div class="term-row">
+        <div class="term-name">Feature extraction</div>
+        <div class="term-def">Turning raw input into useful numbers. In your project, the 63 landmark coordinates ARE your features. In image-based approaches, a CNN extracts features automatically from pixels.</div>
+      </div>
+      <div class="term-row">
+        <div class="term-name">Classification</div>
+        <div class="term-def">Your model's job — take 63 input numbers and output one of 26 classes (A–Z). The model assigns a probability to each class and picks the highest. That's your predicted letter.</div>
+      </div>
+      <div class="term-row">
+        <div class="term-name">Confidence score</div>
+        <div class="term-def">The probability value of the winning class. If the model says "A with 94% confidence" — that 94% is your confidence score. You only speak the letter aloud when this exceeds a threshold (e.g. 80%).</div>
+      </div>
+      <div class="term-row">
+        <div class="term-name">Normalization</div>
+        <div class="term-def">Scaling input values to a consistent range (0–1 or -1 to 1). MediaPipe already returns normalized coordinates, but if you collect raw pixel data, you'd divide by image width/height. Prevents large numbers from dominating the model.</div>
+      </div>
+      <div class="term-row">
+        <div class="term-name">OpenCV</div>
+        <div class="term-def">Open Computer Vision library. Handles: opening your webcam, reading frame-by-frame, drawing boxes/text on the video feed, converting color spaces (BGR to RGB). It's the "camera manager" in your pipeline.</div>
+      </div>
+      <div class="term-row">
+        <div class="term-name">pyttsx3</div>
+        <div class="term-def">Text-to-speech Python library that works offline. You pass it a string and it speaks it aloud through your speakers. No API key needed — runs fully locally.</div>
+      </div>
+      <div class="term-row">
+        <div class="term-name">Streamlit</div>
+        <div class="term-def">Python library that turns a Python script into a shareable web app with zero HTML/CSS. You write Python, it renders sliders, buttons, webcam feeds, text boxes. Perfect for demos and Hugging Face deployment.</div>
+      </div>
+      <div class="term-row">
+        <div class="term-name">Inference</div>
+        <div class="term-def">Running your trained model on new data to get a prediction. Training = learning from data. Inference = using what you learned. In your app, every webcam frame triggers inference in real time.</div>
+      </div>
+      <div class="term-row">
+        <div class="term-name">Overfitting</div>
+        <div class="term-def">When your model memorizes training data but fails on new data. Signs: 99% training accuracy, 60% test accuracy. Fix: add Dropout layers, collect more diverse training data, use data augmentation.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="stack" class="panel">
+  <div class="section">
+    <div class="section-title">Install everything with one command</div>
+    <div class="code-block">pip install mediapipe opencv-python tensorflow keras numpy pandas scikit-learn pyttsx3 streamlit matplotlib seaborn</div>
+  </div>
+  <div class="section">
+    <div class="section-title">What each library does in your project</div>
+    <div class="grid2">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="card-title">mediapipe</div>
+          <span class="badge badge-blue">Core</span>
+        </div>
+        <div class="card-desc" style="margin-top:4px">Detects 21 hand landmarks per frame in real time. The backbone of your gesture recognition. Google-maintained, extremely fast.</div>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="card-title">opencv-python</div>
+          <span class="badge badge-blue">Core</span>
+        </div>
+        <div class="card-desc" style="margin-top:4px">Opens your webcam, reads frames, converts BGR↔RGB, draws overlays (bounding boxes, landmark dots, predicted text) on the video feed.</div>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="card-title">tensorflow + keras</div>
+          <span class="badge badge-blue">Core</span>
+        </div>
+        <div class="card-desc" style="margin-top:4px">Build and train your neural network classifier. Keras is the high-level API on top of TensorFlow — you'll mostly use Keras syntax.</div>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="card-title">scikit-learn</div>
+          <span class="badge badge-green">Model</span>
+        </div>
+        <div class="card-desc" style="margin-top:4px">For your baseline classifier (Random Forest) before you move to the neural network. Also used for train/test split, accuracy metrics, confusion matrix.</div>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="card-title">pyttsx3</div>
+          <span class="badge badge-teal">Feature</span>
+        </div>
+        <div class="card-desc" style="margin-top:4px">Offline text-to-speech. Speaks the recognized word aloud when confidence > 80%. No API key, no internet required.</div>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="card-title">streamlit</div>
+          <span class="badge badge-purple">UI + Deploy</span>
+        </div>
+        <div class="card-desc" style="margin-top:4px">Turns your Python script into a web app. Used for the final UI and deployment to Hugging Face Spaces.</div>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="card-title">numpy + pandas</div>
+          <span class="badge badge-amber">Data</span>
+        </div>
+        <div class="card-desc" style="margin-top:4px">numpy handles arrays (landmark coordinates). pandas handles loading and organizing your training data CSV files.</div>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="card-title">matplotlib + seaborn</div>
+          <span class="badge badge-amber">Viz</span>
+        </div>
+        <div class="card-desc" style="margin-top:4px">Plot your model's training accuracy/loss curves and confusion matrix. Essential for the notebook and README visuals.</div>
+      </div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">Python version</div>
+    <div class="card">
+      <div class="card-desc">Use Python 3.9 or 3.10. MediaPipe has known issues with Python 3.12 on some systems. Check with <span class="inline-code">python --version</span> before starting.</div>
+    </div>
+  </div>
+</div>
+
+<div id="workflow" class="panel">
+  <div class="section">
+    <div class="section-title">Full pipeline — step by step</div>
+    <div class="pipeline-row">
+      <div class="pipe-box" style="background:#E6F1FB;border-color:#B5D4F4"><i class="ti ti-camera" style="font-size:16px;color:#0C447C" aria-hidden="true"></i><span class="pipe-sub" style="color:#185FA5">Webcam frame</span></div>
+      <div class="pipe-arrow"><i class="ti ti-arrow-right" aria-hidden="true"></i></div>
+      <div class="pipe-box" style="background:#EEEDFE;border-color:#AFA9EC"><i class="ti ti-hand-stop" style="font-size:16px;color:#3C3489" aria-hidden="true"></i><span class="pipe-sub" style="color:#534AB7">MediaPipe</span></div>
+      <div class="pipe-arrow"><i class="ti ti-arrow-right" aria-hidden="true"></i></div>
+      <div class="pipe-box" style="background:#EAF3DE;border-color:#C0DD97"><i class="ti ti-database" style="font-size:16px;color:#27500A" aria-hidden="true"></i><span class="pipe-sub" style="color:#3B6D11">63 numbers</span></div>
+      <div class="pipe-arrow"><i class="ti ti-arrow-right" aria-hidden="true"></i></div>
+      <div class="pipe-box" style="background:#FAEEDA;border-color:#FAC775"><i class="ti ti-brain" style="font-size:16px;color:#633806" aria-hidden="true"></i><span class="pipe-sub" style="color:#854F0B">Model</span></div>
+      <div class="pipe-arrow"><i class="ti ti-arrow-right" aria-hidden="true"></i></div>
+      <div class="pipe-box" style="background:#E1F5EE;border-color:#9FE1CB"><i class="ti ti-file-text" style="font-size:16px;color:#085041" aria-hidden="true"></i><span class="pipe-sub" style="color:#0F6E56">Letter / Word</span></div>
+      <div class="pipe-arrow"><i class="ti ti-arrow-right" aria-hidden="true"></i></div>
+      <div class="pipe-box" style="background:#FBEAF0;border-color:#F4C0D1"><i class="ti ti-volume" style="font-size:16px;color:#72243E" aria-hidden="true"></i><span class="pipe-sub" style="color:#993556">Speech</span></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Phase 1 — data collection (if building your own dataset)</div>
+    <div class="card">
+      <div class="card-desc">Open webcam with OpenCV → pass each frame to MediaPipe → extract 21 (x,y,z) points → flatten to a 63-number array → label it with the current sign (e.g. "A") → save to a CSV row. Do 100 samples per letter. Takes about 30–40 minutes total.</div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">Phase 2 — model training (offline, in a notebook)</div>
+    <div class="card">
+      <div class="card-desc">Load your CSV → split into train/test (80/20) → normalize features → build a Keras neural network (Input: 63 → Dense 128 → Dropout 0.3 → Dense 64 → Dropout 0.3 → Output: 26 softmax) → train for 50 epochs → save the model as <span class="inline-code">isl_model.h5</span> → evaluate: print accuracy, plot confusion matrix.</div>
+      <div class="code-block" style="margin-top:10px">model = Sequential([
+  Dense(128, activation='relu', input_shape=(63,)),
+  Dropout(0.3),
+  Dense(64, activation='relu'),
+  Dropout(0.3),
+  Dense(26, activation='softmax')
+])</div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">Phase 3 — real-time inference loop</div>
+    <div class="card">
+      <div class="card-desc">Load the saved model → open webcam with OpenCV → for each frame: convert BGR to RGB → pass to MediaPipe → if hand detected, extract 63 landmarks → run model.predict() → if confidence > 0.8, display the letter → accumulate letters into words → if hand still for 1.5 seconds, commit the letter → on spacebar press, speak the word with pyttsx3.</div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">Phase 4 — Streamlit UI</div>
+    <div class="card">
+      <div class="card-desc">Wrap the webcam loop in Streamlit using <span class="inline-code">st.camera_input()</span> or <span class="inline-code">streamlit-webrtc</span> for live video. Left column: live webcam with landmark overlay. Right column: current letter, accumulated word, confidence bar, "Speak" button, "Clear" button.</div>
+    </div>
+  </div>
+</div>
+
+<div id="folder" class="panel">
+  <div class="section">
+    <div class="section-title">Complete folder structure</div>
+    <div class="card">
+      <div class="folder-line">
+<span class="dir">isl-converter/</span>
+├── <span class="dir">data/</span>
+│   ├── <span class="dir">raw/</span>            <span class="comment"># original dataset images or CSV</span>
+│   ├── <span class="dir">landmarks/</span>      <span class="comment"># extracted landmark CSVs</span>
+│   └── <span class="dir">processed/</span>      <span class="comment"># train/test split numpy arrays</span>
+│
+├── <span class="dir">notebooks/</span>
+│   ├── 01_data_collection.ipynb
+│   ├── 02_eda_and_viz.ipynb      <span class="comment"># exploratory data analysis</span>
+│   └── 03_model_training.ipynb
+│
+├── <span class="dir">src/</span>
+│   ├── collect_data.py     <span class="comment"># webcam + landmark extraction script</span>
+│   ├── train_model.py      <span class="comment"># model definition + training</span>
+│   ├── predict.py          <span class="comment"># load model + run inference</span>
+│   └── tts.py              <span class="comment"># text-to-speech helper</span>
+│
+├── <span class="dir">models/</span>
+│   ├── isl_model.h5        <span class="comment"># saved trained model</span>
+│   └── label_encoder.pkl   <span class="comment"># class label mapping</span>
+│
+├── <span class="dir">app/</span>
+│   └── streamlit_app.py    <span class="comment"># main Streamlit web app</span>
+│
+├── <span class="dir">assets/</span>
+│   ├── demo.gif            <span class="comment"># screen recording for README</span>
+│   └── confusion_matrix.png
+│
+├── requirements.txt
+├── README.md               <span class="comment"># with demo GIF, results, setup guide</span>
+└── .gitignore</div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">requirements.txt contents</div>
+    <div class="code-block">mediapipe==0.10.9
+opencv-python==4.9.0.80
+tensorflow==2.15.0
+numpy==1.26.4
+pandas==2.2.1
+scikit-learn==1.4.1
+pyttsx3==2.90
+streamlit==1.32.0
+matplotlib==3.8.3
+seaborn==0.13.2</div>
+  </div>
+</div>
+
+<div id="plan" class="panel">
+  <div class="section">
+    <div class="section-title">4-week build plan</div>
+
+    <div class="week-card">
+      <div class="week-header">
+        <div class="week-num" style="background:#E6F1FB;color:#0C447C">1</div>
+        <div>
+          <div class="week-title">Setup + data</div>
+          <div class="week-subtitle">Foundation, environment, dataset, landmark extraction</div>
+        </div>
+      </div>
+      <div class="task-list">
+        <div class="task"><div class="task-dot" style="background:#185FA5"></div>Install Python 3.10, set up a virtual environment, install all dependencies</div>
+        <div class="task"><div class="task-dot" style="background:#185FA5"></div>Download ISL dataset from Kaggle. Explore folder structure, count images per class</div>
+        <div class="task"><div class="task-dot" style="background:#185FA5"></div>Write <span class="inline-code">collect_data.py</span> — open webcam, show MediaPipe landmarks overlaid on your hand in real time</div>
+        <div class="task"><div class="task-dot" style="background:#185FA5"></div>Extract landmarks from dataset images (or record your own): save 63 numbers + label per sample to CSV</div>
+        <div class="task"><div class="task-dot" style="background:#185FA5"></div>Open <span class="inline-code">02_eda_and_viz.ipynb</span> — plot class distribution, visualize 5 samples per class, check for missing values</div>
+        <div class="task"><div class="task-dot" style="background:#185FA5"></div>Deliverable: a clean landmarks CSV with ~2,600+ rows and 64 columns (63 features + label)</div>
+      </div>
+    </div>
+
+    <div class="week-card">
+      <div class="week-header">
+        <div class="week-num" style="background:#EEEDFE;color:#3C3489">2</div>
+        <div>
+          <div class="week-title">Model training</div>
+          <div class="week-subtitle">Baseline → neural network → evaluation</div>
+        </div>
+      </div>
+      <div class="task-list">
+        <div class="task"><div class="task-dot" style="background:#534AB7"></div>Train a Random Forest baseline in scikit-learn. Target: 85%+ accuracy. This gives you a comparison point.</div>
+        <div class="task"><div class="task-dot" style="background:#534AB7"></div>Build Keras neural network (Dense 128 → Dropout → Dense 64 → Dropout → Softmax 26)</div>
+        <div class="task"><div class="task-dot" style="background:#534AB7"></div>Train for 50 epochs with Adam optimizer, categorical crossentropy loss. Plot accuracy + loss curves.</div>
+        <div class="task"><div class="task-dot" style="background:#534AB7"></div>Evaluate on test set: print accuracy, generate confusion matrix heatmap with seaborn</div>
+        <div class="task"><div class="task-dot" style="background:#534AB7"></div>Save model as <span class="inline-code">isl_model.h5</span> and label encoder as <span class="inline-code">label_encoder.pkl</span></div>
+        <div class="task"><div class="task-dot" style="background:#534AB7"></div>Deliverable: trained model with 90%+ test accuracy, confusion matrix saved as PNG</div>
+      </div>
+    </div>
+
+    <div class="week-card">
+      <div class="week-header">
+        <div class="week-num" style="background:#E1F5EE;color:#085041">3</div>
+        <div>
+          <div class="week-title">Real-time app + UI</div>
+          <div class="week-subtitle">Live webcam inference, word building, text-to-speech, Streamlit</div>
+        </div>
+      </div>
+      <div class="task-list">
+        <div class="task"><div class="task-dot" style="background:#0F6E56"></div>Write <span class="inline-code">predict.py</span> — load model, open webcam, run inference on every frame, display predicted letter + confidence on screen with OpenCV</div>
+        <div class="task"><div class="task-dot" style="background:#0F6E56"></div>Add word-building logic: letters accumulate when hand is held still for 1.5 seconds. Spacebar commits the word.</div>
+        <div class="task"><div class="task-dot" style="background:#0F6E56"></div>Add text-to-speech: when word is committed and confidence > 80%, pyttsx3 speaks it aloud</div>
+        <div class="task"><div class="task-dot" style="background:#0F6E56"></div>Add confidence bar: green when ≥80%, amber 60–79%, red below 60%</div>
+        <div class="task"><div class="task-dot" style="background:#0F6E56"></div>Build Streamlit UI in <span class="inline-code">app/streamlit_app.py</span>: two-column layout, webcam feed left, output panel right</div>
+        <div class="task"><div class="task-dot" style="background:#0F6E56"></div>Deliverable: working real-time app you can demo live from your laptop</div>
+      </div>
+    </div>
+
+    <div class="week-card">
+      <div class="week-header">
+        <div class="week-num" style="background:#FAEEDA;color:#633806">4</div>
+        <div>
+          <div class="week-title">Polish + deploy + document</div>
+          <div class="week-subtitle">Hugging Face deployment, README, demo GIF, GitHub</div>
+        </div>
+      </div>
+      <div class="task-list">
+        <div class="task"><div class="task-dot" style="background:#854F0B"></div>Deploy to Hugging Face Spaces (free): create account, push repo, add <span class="inline-code">app.py</span> + <span class="inline-code">requirements.txt</span> — live URL in 10 minutes</div>
+        <div class="task"><div class="task-dot" style="background:#854F0B"></div>Record a demo GIF (use OBS or LICEcap): 15 seconds showing you signing A, B, C and the app responding</div>
+        <div class="task"><div class="task-dot" style="background:#854F0B"></div>Write README: project description, demo GIF at top, tech stack, results (accuracy, confusion matrix), setup instructions</div>
+        <div class="task"><div class="task-dot" style="background:#854F0B"></div>Clean up notebooks: add markdown cells explaining each step. These become your "project documentation."</div>
+        <div class="task"><div class="task-dot" style="background:#854F0B"></div>Push everything to GitHub with a clean commit history (not one giant commit)</div>
+        <div class="task"><div class="task-dot" style="background:#854F0B"></div>Deliverable: public GitHub repo + live Hugging Face demo link → paste both on your resume</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="resume" class="panel">
+  <div class="section">
+    <div class="section-title">Resume bullet (copy this)</div>
+    <div class="resume-box">
+      <strong style="color:var(--color-text-primary)">Indian Sign Language (ISL) Real-Time Converter</strong> | Python, MediaPipe, TensorFlow/Keras, OpenCV, Streamlit<br><br>
+      Built a real-time sign language recognition system for Indian Sign Language (ISL) using MediaPipe's 21-point hand landmark extraction and a Keras neural network classifier achieving 93%+ test accuracy across 26 gesture classes. Integrated offline text-to-speech (pyttsx3) for accessible audio output and deployed as an interactive web app on Hugging Face Spaces. Chose landmark-based over pixel-based architecture for robustness across lighting and skin tones.
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">3 interview answers to memorize</div>
+    <div class="card">
+      <div class="card-title">"Why landmarks instead of raw images?"</div>
+      <div class="card-desc" style="margin-top:4px">Raw pixel models fail when lighting changes, the background shifts, or skin tones vary. Landmark coordinates are normalized and position-independent — the model learns the shape of the gesture, not what it looks like under specific lighting. It's also much lighter to train.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">"Why ISL specifically?"</div>
+      <div class="card-desc" style="margin-top:4px">Most open-source sign language tools are built for ASL, which doesn't serve India's 63 million hearing-impaired people. ISL has different signs, different grammar structure, and far less open tooling. Building for ISL fills a real gap instead of adding to an existing pile.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">"What would you improve next?"</div>
+      <div class="card-desc" style="margin-top:4px">Currently the model handles only static gestures — signs that are a single hand position. Many ISL words involve movement over time. The next step would be using LSTM networks to capture sequences of landmark frames, enabling full word-level recognition instead of just the alphabet.</div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">What to link on your resume</div>
+    <div class="grid2">
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px"><i class="ti ti-brand-github" style="font-size:20px;color:var(--color-text-secondary)" aria-hidden="true"></i><div class="card-title">GitHub repo</div></div>
+        <div class="card-desc" style="margin-top:4px">Clean README with demo GIF at the top. Interviewers spend 30 seconds on it — the GIF must be the first thing they see.</div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px"><i class="ti ti-world" style="font-size:20px;color:var(--color-text-secondary)" aria-hidden="true"></i><div class="card-title">Hugging Face Space</div></div>
+        <div class="card-desc" style="margin-top:4px">Live demo URL. If an interviewer can click it and see it work, you've already won half the battle.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById(t.dataset.tab).classList.add('active');
+  });
+});
+</script>

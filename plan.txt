@@ -1,0 +1,803 @@
+This is a **very strong project choice** because it combines **Computer Vision + Deep Learning + Machine Learning + Real-Time Systems + Accessibility + Deployment**. It is significantly more impressive than the usual "ASL alphabet detector" since you're targeting **Indian Sign Language (ISL)**.
+
+I also looked at the document you uploaded. It already contains a complete technical roadmap with weekly milestones, folder structure, code snippets, deployment plan, and architecture. 
+
+---
+
+# Project Goal
+
+Build a real-time **Indian Sign Language (ISL) to Text & Speech Converter**
+
+**Pipeline**
+
+```
+Webcam
+      │
+      ▼
+OpenCV captures video
+      │
+      ▼
+MediaPipe detects hand
+      │
+      ▼
+21 hand landmarks
+(63 numbers)
+      │
+      ▼
+Neural Network
+      │
+      ▼
+Predicted Letter
+      │
+      ▼
+Word Builder
+      │
+      ▼
+Text
+      │
+      ▼
+Speech
+```
+
+---
+
+# Technologies You'll Learn
+
+## 1. Python
+
+Main programming language.
+
+You'll learn
+
+* OOP
+* Functions
+* File handling
+* Virtual environments
+* Packages
+
+---
+
+## 2. OpenCV
+
+Purpose
+
+Computer Vision
+
+Used for
+
+* Webcam
+* Reading frames
+* Drawing text
+* Drawing landmarks
+* Showing prediction
+* Keyboard controls
+
+Example
+
+```
+Open webcam
+
+Read frame
+
+Display frame
+
+Wait for next frame
+```
+
+---
+
+## 3. MediaPipe
+
+Google's framework.
+
+This is the heart of your project.
+
+Instead of sending images to your model,
+
+MediaPipe converts your hand into
+
+```
+21 points
+```
+
+Example
+
+```
+Thumb tip
+
+Index tip
+
+Middle tip
+
+Ring tip
+
+Little finger
+
+Wrist
+```
+
+Each point has
+
+```
+x
+
+y
+
+z
+```
+
+Total
+
+```
+21 × 3
+
+=
+
+63 features
+```
+
+These become your ML model input.
+
+---
+
+## 4. TensorFlow / Keras
+
+Used to build
+
+Neural Network
+
+Example architecture
+
+```
+63 inputs
+
+↓
+
+Dense(128)
+
+↓
+
+Dropout
+
+↓
+
+Dense(64)
+
+↓
+
+Dropout
+
+↓
+
+Softmax(36)
+```
+
+Output
+
+```
+A
+
+B
+
+C
+
+...
+
+9
+```
+
+---
+
+## 5. Scikit-learn
+
+Used for
+
+Random Forest baseline
+
+Also
+
+* Train Test Split
+* Accuracy
+* Confusion Matrix
+* Classification Report
+
+---
+
+## 6. Pandas
+
+For datasets
+
+Example
+
+```
+CSV
+
+↓
+
+DataFrame
+
+↓
+
+Training
+```
+
+---
+
+## 7. NumPy
+
+Stores
+
+```
+63 landmark values
+
+↓
+
+Arrays
+
+↓
+
+TensorFlow input
+```
+
+---
+
+## 8. Streamlit
+
+Creates UI
+
+No HTML needed.
+
+---
+
+## 9. pyttsx3
+
+Offline
+
+Text
+
+↓
+
+Speech
+
+---
+
+# Dataset
+
+Use
+
+**ISLRTC Referred Dataset**
+
+It contains
+
+```
+Images
+
+↓
+
+Alphabet
+
+↓
+
+Numbers
+
+↓
+
+Train
+
+↓
+
+Test
+```
+
+Your workflow will be
+
+```
+Dataset
+
+↓
+
+Extract landmarks
+
+↓
+
+CSV
+
+↓
+
+Train Model
+
+↓
+
+Save Model
+```
+
+---
+
+# Folder Structure
+
+```
+ISL_Project/
+
+│
+
+├── data/
+
+│     ├── raw/
+
+│     ├── processed/
+
+│     └── landmarks/
+
+│
+
+├── notebooks/
+
+│     ├── EDA.ipynb
+
+│     ├── Training.ipynb
+
+│     └── Testing.ipynb
+
+│
+
+├── src/
+
+│     ├── collect_data.py
+
+│     ├── preprocess.py
+
+│     ├── train_model.py
+
+│     ├── predict.py
+
+│     ├── word_builder.py
+
+│     ├── tts.py
+
+│     └── utils.py
+
+│
+
+├── models/
+
+│     ├── isl_model.keras
+
+│     └── label_encoder.pkl
+
+│
+
+├── app/
+
+│     └── streamlit_app.py
+
+│
+
+├── assets/
+
+│     ├── demo.gif
+
+│     ├── screenshots/
+
+│     └── images/
+
+│
+
+├── requirements.txt
+
+├── README.md
+
+└── .gitignore
+```
+
+---
+
+# Dependencies
+
+```
+mediapipe
+
+opencv-python
+
+tensorflow
+
+keras
+
+numpy
+
+pandas
+
+scikit-learn
+
+streamlit
+
+pyttsx3
+
+matplotlib
+
+seaborn
+
+joblib
+
+tqdm
+
+streamlit-webrtc
+```
+
+---
+
+# Complete Workflow
+
+```
+Download Dataset
+
+↓
+
+Explore Images
+
+↓
+
+MediaPipe detects landmarks
+
+↓
+
+Convert to CSV
+
+↓
+
+Clean Data
+
+↓
+
+Train Random Forest
+
+↓
+
+Train Neural Network
+
+↓
+
+Evaluate
+
+↓
+
+Save Model
+
+↓
+
+Load Model
+
+↓
+
+Open Webcam
+
+↓
+
+Predict Gesture
+
+↓
+
+Display Letter
+
+↓
+
+Build Word
+
+↓
+
+Convert to Speech
+
+↓
+
+Deploy
+```
+
+---
+
+# Machine Learning Pipeline
+
+```
+Images
+
+↓
+
+MediaPipe
+
+↓
+
+63 Features
+
+↓
+
+Training CSV
+
+↓
+
+Train/Test Split
+
+↓
+
+Model
+
+↓
+
+Prediction
+```
+
+---
+
+# Real Time Pipeline
+
+```
+Camera
+
+↓
+
+Frame
+
+↓
+
+MediaPipe
+
+↓
+
+63 Coordinates
+
+↓
+
+Model
+
+↓
+
+Confidence
+
+↓
+
+Letter
+
+↓
+
+Word
+
+↓
+
+Speech
+```
+
+---
+
+# Features to Add
+
+### Core
+
+✅ Webcam
+
+✅ Live prediction
+
+✅ Word builder
+
+✅ Confidence score
+
+✅ Speak button
+
+---
+
+### Better
+
+✅ Confidence bar
+
+Green
+
+Yellow
+
+Red
+
+---
+
+### Better
+
+Prediction smoothing
+
+Don't accept a letter until
+
+```
+15 frames
+
+agree
+
+OR
+
+1.5 seconds
+```
+
+---
+
+### Better
+
+Backspace
+
+Clear word
+
+---
+
+### Better
+
+Prediction history
+
+```
+A
+
+A
+
+A
+
+A
+
+↓
+
+Accept A
+```
+
+---
+
+### Better
+
+Dark mode
+
+---
+
+### Better
+
+FPS counter
+
+---
+
+### Better
+
+Statistics
+
+```
+Accuracy
+
+Current FPS
+
+Prediction confidence
+
+Letters recognized
+```
+
+---
+
+# Four-Week Plan
+
+## Week 1 — Setup & Data Preparation
+
+**Goal:** Build the foundation and verify that the webcam + MediaPipe pipeline works.
+
+**Tasks**
+
+* Install Python 3.10 and create a virtual environment.
+* Install all required libraries.
+* Download the ISLRTC-referred Kaggle dataset.
+* Explore the dataset (class count, image size, distribution).
+* Test MediaPipe with your webcam and verify detection of all 21 landmarks.
+* Write a script to extract 63 landmark features (21 × x,y,z) from each dataset image.
+* Save extracted features to a CSV file.
+* Perform basic EDA (missing values, class balance, sample visualization).
+
+**Deliverables**
+
+* Working MediaPipe landmark detector.
+* Landmark CSV ready for training.
+* EDA notebook with visualizations.
+
+---
+
+## Week 2 — Model Training & Evaluation
+
+**Goal:** Train and evaluate gesture recognition models.
+
+**Tasks**
+
+* Split the landmark dataset into training and testing sets.
+* Train a Random Forest model as a baseline.
+* Train a Keras neural network (Dense → Dropout → Dense → Softmax).
+* Compare both models.
+* Generate:
+
+  * Accuracy score
+  * Precision/Recall/F1-score
+  * Confusion matrix
+  * Training & validation accuracy/loss plots
+* Save:
+
+  * `isl_model.keras`
+  * `label_encoder.pkl`
+
+**Deliverables**
+
+* Baseline Random Forest results.
+* Neural network with ~90%+ accuracy (if dataset quality permits).
+* Saved trained model.
+
+---
+
+## Week 3 — Real-Time Recognition Application
+
+**Goal:** Connect the trained model to a live webcam.
+
+**Tasks**
+
+* Load the trained model.
+* Capture webcam frames using OpenCV.
+* Detect hand landmarks with MediaPipe.
+* Predict the sign in real time.
+* Display:
+
+  * Predicted letter
+  * Confidence score
+  * FPS
+* Add a stability buffer (e.g., 15-frame consensus).
+* Build words by committing stable letters.
+* Integrate offline text-to-speech with `pyttsx3`.
+* Add a confidence indicator (green/yellow/red).
+
+**Deliverables**
+
+* End-to-end real-time ISL recognizer.
+* Word formation.
+* Speech output.
+
+---
+
+## Week 4 — UI, Deployment & Documentation
+
+**Goal:** Make the project polished and portfolio-ready.
+
+**Tasks**
+
+* Build a clean Streamlit interface.
+* Show:
+
+  * Live webcam feed
+  * Landmark overlay
+  * Predicted letter
+  * Confidence
+  * Current word
+  * Speak button
+  * Clear button
+* Test on multiple browsers.
+* Deploy to Hugging Face Spaces.
+* Record a 15–30 second demo video/GIF.
+* Write a professional README with:
+
+  * Project overview
+  * Motivation
+  * Architecture diagram
+  * Dataset
+  * Tech stack
+  * Results
+  * Installation steps
+  * Demo GIF
+  * Deployment link
+* Push the project to GitHub with meaningful commits.
+
+**Deliverables**
+
+* Public GitHub repository.
+* Live deployed application.
+* Complete documentation and demo.
+
+---
+
+## Stretch Goals (Optional)
+
+If you finish early, consider these upgrades:
+
+* Recognize **ISL words** instead of only alphabet signs using a video dataset.
+* Add support for **dynamic gestures** using an LSTM or Transformer model.
+* Support **two-hand gestures**.
+* Export recognized text to a file.
+* Add multilingual speech output (English/Hindi).
+* Track user performance with recognition statistics.
+
+Your uploaded guide outlines essentially this same progression—from MediaPipe validation, landmark extraction, model training, real-time inference, Streamlit integration, and deployment—so you're starting with a solid roadmap. 
