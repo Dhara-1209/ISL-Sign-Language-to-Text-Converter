@@ -10,7 +10,6 @@ import cv2
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
-import tensorflow as tf
 import streamlit as st
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase, RTCConfiguration
 import av
@@ -84,7 +83,17 @@ def download_hand_model():
 
 @st.cache_resource
 def load_model_artifacts():
+    # Preferred: TensorFlow-free NumPy model (made by src/export_numpy_model.py).
+    # It avoids Keras threading problems inside streamlit-webrtc.
+    npz = os.path.join(MODEL_DIR, "isl_numpy.npz")
+    if os.path.exists(npz):
+        try:
+            from src.numpy_model import load_numpy_artifacts
+            return load_numpy_artifacts(npz)
+        except Exception as exc:
+            st.warning(f"NumPy model failed ({exc!r}); falling back to Keras.")
     try:
+        import tensorflow as tf
         model = tf.keras.models.load_model(MODEL_PATH)
         with open(ENCODER_PATH, "rb") as f:
             encoder = pickle.load(f)

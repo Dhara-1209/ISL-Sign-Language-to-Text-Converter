@@ -10,7 +10,6 @@ import numpy as np
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
-import tensorflow as tf
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
@@ -53,6 +52,11 @@ def download_hand_model():
 def load_artifacts():
     """Load the trained Keras model, label encoder, and scaler."""
     print("[*] Loading model artifacts …")
+    npz = os.path.join(MODEL_DIR, "isl_numpy.npz")
+    if os.path.exists(npz):                      # TensorFlow-free path
+        from src.numpy_model import load_numpy_artifacts
+        return load_numpy_artifacts(npz)
+    import tensorflow as tf
     model = tf.keras.models.load_model(MODEL_PATH)
     with open(ENCODER_PATH, "rb") as f:
         encoder = pickle.load(f)
