@@ -15,6 +15,7 @@ import tensorflow as tf
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 from src.tts import speak  # noqa: E402
+from src.features import build_features  # noqa: E402
 
 MODEL_DIR    = os.path.join(PROJECT_ROOT, "models")
 MODEL_PATH   = os.path.join(MODEL_DIR, "isl_model.h5")
@@ -85,8 +86,8 @@ def run_prediction_loop() -> None:
     options = vision.HandLandmarkerOptions(
         base_options=python.BaseOptions(model_asset_path=MP_TASK_MODEL),
         running_mode=vision.RunningMode.VIDEO,
-        num_hands=1,
-        min_hand_detection_confidence=0.7,
+        num_hands=2,                       # many ISL letters use BOTH hands
+        min_hand_detection_confidence=0.5,
         min_hand_presence_confidence=0.5,
         min_tracking_confidence=0.5
     )
@@ -127,13 +128,12 @@ def run_prediction_loop() -> None:
             confidence = 0.0
 
             if detection_result.hand_landmarks:
-                hand_lms = detection_result.hand_landmarks[0]
-
-                wrist_x, wrist_y, wrist_z = hand_lms[0].x, hand_lms[0].y, hand_lms[0].z
-                landmarks = []
-                for lm in hand_lms:
-                    landmarks.extend([lm.x - wrist_x, lm.y - wrist_y, lm.z - wrist_z])
-                landmarks = np.array(landmarks, dtype=np.float32).reshape(1, -1)
+                hands_raw = [
+                    np.array([[p.x, p.y, p.z] for p in h], dtype=np.float32)
+                    for h in detection_result.hand_landmarks[:2]
+                ]
+                # Same feature builder as training (src/features.py)
+                landmarks = build_features(hands_raw).reshape(1, -1)
 
                 scaled = scaler.transform(landmarks)
                 probs = model.predict(scaled, verbose=0)[0]
@@ -141,7 +141,8 @@ def run_prediction_loop() -> None:
                 confidence = float(probs[pred_idx])
                 letter = str(encoder.inverse_transform([pred_idx])[0])
 
-                draw_hand_skeleton(frame, hand_lms)
+                for h in detection_result.hand_landmarks[:2]:
+                    draw_hand_skeleton(frame, h)
 
                 buffer.append(letter)
                 if len(buffer) >= COMMIT_THRESHOLD:

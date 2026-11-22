@@ -18,6 +18,7 @@ import av
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 from src.tts import speak  # noqa: E402
+from src.features import build_features  # noqa: E402
 
 MODEL_DIR    = os.path.join(PROJECT_ROOT, "models")
 MODEL_PATH   = os.path.join(MODEL_DIR, "isl_model.h5")
@@ -42,6 +43,18 @@ HAND_CONNECTIONS = [
     (5,9), (9,10), (10,11), (11,12), (9,13), (13,14), (14,15), (15,16),
     (13,17), (17,18), (18,19), (19,20), (0,17)
 ]
+
+def _read_model_accuracy() -> str:
+    """Read the accuracy written by train_two_hand.py (no hard-coded numbers)."""
+    import json
+    try:
+        with open(os.path.join(MODEL_DIR, "metrics.json")) as f:
+            return f"{json.load(f)['block_split_accuracy'] * 100:.1f}%"
+    except Exception:
+        return "n/a"
+
+
+MODEL_ACC = _read_model_accuracy()
 
 RTC_CONFIGURATION = RTCConfiguration(
     {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
@@ -95,7 +108,7 @@ class ISLVideoTransformer(VideoTransformerBase):
         options = vision.HandLandmarkerOptions(
             base_options=python.BaseOptions(model_asset_path=MP_TASK_MODEL),
             running_mode=vision.RunningMode.VIDEO,
-            num_hands=1,
+            num_hands=2,                    # many ISL letters use BOTH hands
             min_hand_detection_confidence=0.5,
             min_hand_presence_confidence=0.4,
             min_tracking_confidence=0.4
@@ -215,16 +228,16 @@ class ISLVideoTransformer(VideoTransformerBase):
             self.state.space_flag = False
             self.space_added = True
 
-        # ── Enhance image quality ────────────────────────────
-        enhanced = self._enhance_frame(img)
-
+        # NOTE: no sharpen/CLAHE here. The model was trained on raw images,
+        # so enhancing the live frame only shifts the landmarks away from
+        # what the model learned.
         if self.model is None:
             cv2.putText(img, "Model not loaded!", (10, 30),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
             return av.VideoFrame.from_ndarray(img, format="bgr24")
 
         # ── Run detection on every frame ─────────────────────
-        rgb = cv2.cvtColor(enhanced, cv2.COLOR_BGR2RGB)
+        rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
         timestamp_ms = int(time.time() * 1000)
         detection_result = self.landmarker.detect_for_video(mp_image, timestamp_ms)
@@ -239,17 +252,13 @@ class ISLVideoTransformer(VideoTransformerBase):
             # Training CSV has wrist zeroed: x0=0, y0=0, z0=0 and all
             # other landmarks are (lm.x - wrist.x, lm.y - wrist.y, lm.z - wrist.z).
             # Do NOT apply any further scaling — the scaler.pkl handles that.
-            wrist_x = hand_lms[0].x
-            wrist_y = hand_lms[0].y
-            wrist_z = hand_lms[0].z
-            landmarks = []
-            for lm in hand_lms:
-                landmarks.extend([
-                    lm.x - wrist_x,
-                    lm.y - wrist_y,
-                    lm.z - wrist_z,
-                ])
-            landmarks = np.array(landmarks, dtype=np.float32).reshape(1, -1)
+            hands_raw = [
+                np.array([[p.x, p.y, p.z] for p in h], dtype=np.float32)
+                for h in detection_result.hand_landmarks[:2]
+            ]
+            # Same feature builder as training (src/features.py): up to two
+            # hands, size-normalised, ordered left-to-right.
+            landmarks = build_features(hands_raw).reshape(1, -1)
 
             try:
                 scaled = self.scaler.transform(landmarks)
@@ -257,7 +266,11 @@ class ISLVideoTransformer(VideoTransformerBase):
                 pred_idx = int(np.argmax(probs))
                 raw_confidence = float(probs[pred_idx])
                 raw_letter     = str(self.encoder.inverse_transform([pred_idx])[0])
-            except Exception:
+            
+            except Exception as exc:
+                import traceback
+                print("PREDICT ERROR:", repr(exc), flush=True)
+                traceback.print_exc()
                 raw_letter     = "-"
                 raw_confidence = 0.0
 
@@ -292,8 +305,9 @@ class ISLVideoTransformer(VideoTransformerBase):
                 self.consec_letter = None
                 self.consec_count  = 0
 
-            # Draw hand skeleton on original img
-            self._draw_hand(img, hand_lms)
+            # Draw hand skeleton(s) on original img
+            for h in detection_result.hand_landmarks[:2]:
+                self._draw_hand(img, h)
 
         else:
             # ── No hand in frame ─────────────────────────────
@@ -369,9 +383,9 @@ with st.sidebar:
     st.markdown(f"""
     | Property | Value |
     |----------|-------|
-    | **Architecture** | MLP (63→128→64→36) |
-    | **Classes** | 36 (0–9, A–Z) |
-    | **Accuracy** | 98.27% |
+    | **Architecture** | MLP (129→256→128→classes) |
+    | **Classes** | 35 (1–9, A–Z; 0 = O) to 34 (1, 3–9, A–Z; 0 = O, 2 = V)|
+    | **Held-out accuracy** | {MODEL_ACC} |
     | **Confidence threshold** | {int(CONFIDENCE_THRESH*100)}% |
     | **Consecutive frames** | {CONSECUTIVE_REQUIRED} |
     | **Cooldown** | {COMMIT_COOLDOWN_SEC}s |
