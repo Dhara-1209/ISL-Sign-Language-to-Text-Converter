@@ -26,10 +26,16 @@ SCALER_PATH  = os.path.join(MODEL_DIR, "scaler.pkl")
 MP_TASK_MODEL = os.path.join(MODEL_DIR, "hand_landmarker.task")
 MP_TASK_URL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task"
 
-BUFFER_MAXLEN       = 15
-COMMIT_THRESHOLD    = 12
-CONFIDENCE_THRESH   = 0.80
-COMMIT_COOLDOWN_SEC = 1.5
+# ── Prediction parameters ─────────────────────────────────────
+# Consecutive-frame strategy:  the SAME letter must appear for
+# CONSECUTIVE_REQUIRED frames in a row (all at or above CONFIDENCE_THRESH)
+# before it is committed to the word.  Any frame that shows a different
+# letter or low confidence resets the counter to zero, so transitional
+# frames between gestures can NEVER trigger a commit.
+CONSECUTIVE_REQUIRED    = 20     # frames of the same letter needed to commit
+CONFIDENCE_THRESH       = 0.70   # minimum per-frame confidence to count
+COMMIT_COOLDOWN_SEC     = 2.0    # minimum gap between two commits
+NO_HAND_FRAMES_FOR_SPACE = 22    # consecutive no-hand frames → auto-space
 
 HAND_CONNECTIONS = [
     (0,1), (1,2), (2,3), (3,4), (0,5), (5,6), (6,7), (7,8),
@@ -47,8 +53,11 @@ class AppState:
         self.letter = "-"
         self.confidence = 0.0
         self.word = ""
+        self.sentence = ""         # Accumulated full sentence
         self.clear_flag = False
         self.delete_flag = False
+        self.space_flag = False
+        self.speak_flag = False
 
 if "app_state" not in st.session_state:
     st.session_state.app_state = AppState()
@@ -73,6 +82,7 @@ def load_model_artifacts():
         st.error(f"⚠ Could not load model artifacts: {exc}")
         return None
 
+
 class ISLVideoTransformer(VideoTransformerBase):
     def __init__(self):
         download_hand_model()
@@ -86,111 +96,299 @@ class ISLVideoTransformer(VideoTransformerBase):
             base_options=python.BaseOptions(model_asset_path=MP_TASK_MODEL),
             running_mode=vision.RunningMode.VIDEO,
             num_hands=1,
-            min_hand_detection_confidence=0.6,
-            min_hand_presence_confidence=0.5,
-            min_tracking_confidence=0.5
+            min_hand_detection_confidence=0.5,
+            min_hand_presence_confidence=0.4,
+            min_tracking_confidence=0.4
         )
         self.landmarker = vision.HandLandmarker.create_from_options(options)
-        self.buffer = deque(maxlen=BUFFER_MAXLEN)
         self.last_commit_time = 0.0
+        self.no_hand_frame_count = 0
+        self.space_added = False
         self.state = app_state
-        self.frame_count = 0  # For frame skipping
+        self._last_detection = None
+
+        # ── Consecutive-frame tracking ────────────────────────
+        # Only commit a letter when the SAME letter appears
+        # CONSECUTIVE_REQUIRED frames IN A ROW at high confidence.
+        # Any different letter or low-confidence frame resets to 0.
+        self.consec_letter = None   # letter currently being accumulated
+        self.consec_count  = 0      # how many consecutive frames so far
+
+    # ── Image enhancement ──────────────────────────────────────
+    @staticmethod
+    def _enhance_frame(img: np.ndarray) -> np.ndarray:
+        """Sharpen + contrast-boost the frame for better landmark detection."""
+        # Mild unsharp mask
+        blur = cv2.GaussianBlur(img, (0, 0), 3)
+        sharp = cv2.addWeighted(img, 1.5, blur, -0.5, 0)
+        # CLAHE on the luminance channel
+        lab = cv2.cvtColor(sharp, cv2.COLOR_BGR2LAB)
+        l, a, b = cv2.split(lab)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        l = clahe.apply(l)
+        enhanced = cv2.cvtColor(cv2.merge([l, a, b]), cv2.COLOR_LAB2BGR)
+        return enhanced
+
+    # ── Draw hand skeleton ─────────────────────────────────────
+    @staticmethod
+    def _draw_hand(img, hand_lms):
+        h, w, _ = img.shape
+        points = [(int(lm.x * w), int(lm.y * h)) for lm in hand_lms]
+        # Draw connections
+        for conn in HAND_CONNECTIONS:
+            cv2.line(img, points[conn[0]], points[conn[1]], (0, 200, 255), 2)
+        # Draw joints
+        for i, pt in enumerate(points):
+            radius = 5 if i == 0 else 4   # Wrist slightly bigger
+            color = (0, 255, 100) if i == 0 else (255, 255, 255)
+            cv2.circle(img, pt, radius, color, -1)
+        # Bounding box around hand
+        xs = [p[0] for p in points]
+        ys = [p[1] for p in points]
+        pad = 20
+        x1, y1 = max(0, min(xs) - pad), max(0, min(ys) - pad)
+        x2, y2 = min(w, max(xs) + pad), min(h, max(ys) + pad)
+        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 200, 255), 1)
+
+    # ── Draw HUD overlay ──────────────────────────────────────
+    @staticmethod
+    def _draw_hud(img, letter, confidence, word, consec_count, consec_required):
+        h, w = img.shape[:2]
+
+        # Top bar (letter + confidence)
+        overlay = img.copy()
+        cv2.rectangle(overlay, (0, 0), (w, 80), (15, 15, 30), -1)
+        cv2.addWeighted(overlay, 0.75, img, 0.25, 0, img)
+
+        conf_pct = confidence * 100
+        bar_color = (0, 220, 80) if conf_pct >= 82 else (0, 180, 255) if conf_pct >= 60 else (60, 60, 200)
+
+        cv2.putText(img, f"Letter: {letter}", (12, 30),
+                    cv2.FONT_HERSHEY_DUPLEX, 0.9, (255, 255, 255), 1, cv2.LINE_AA)
+        cv2.putText(img, f"Conf: {conf_pct:.1f}%", (12, 62),
+                    cv2.FONT_HERSHEY_DUPLEX, 0.68, bar_color, 1, cv2.LINE_AA)
+
+        # Confidence bar (right side of top bar)
+        bx1, bx2 = 170, w - 10
+        cv2.rectangle(img, (bx1, 48), (bx2, 64), (50, 50, 70), -1)
+        cbar = int((bx2 - bx1) * min(confidence, 1.0))
+        cv2.rectangle(img, (bx1, 48), (bx1 + cbar, 64), bar_color, -1)
+
+        # Commit-progress bar: how close to committing the current letter
+        # Shown BELOW the confidence bar in orange/green
+        progress = min(consec_count / max(consec_required, 1), 1.0)
+        prog_color = (0, 220, 80) if progress >= 1.0 else (0, 165, 255)
+        cv2.rectangle(img, (bx1, 66), (bx2, 78), (30, 30, 50), -1)
+        pbar = int((bx2 - bx1) * progress)
+        if pbar > 0:
+            cv2.rectangle(img, (bx1, 66), (bx1 + pbar, 78), prog_color, -1)
+        cv2.putText(img, f"Hold: {consec_count}/{consec_required}", (bx1, 62),
+                    cv2.FONT_HERSHEY_PLAIN, 0.9, (180, 180, 180), 1, cv2.LINE_AA)
+
+        # Bottom bar (committed word)
+        overlay2 = img.copy()
+        cv2.rectangle(overlay2, (0, h - 60), (w, h), (15, 15, 30), -1)
+        cv2.addWeighted(overlay2, 0.75, img, 0.25, 0, img)
+        display_word = word if word else "_"
+        cv2.putText(img, f"Word: {display_word}", (12, h - 18),
+                    cv2.FONT_HERSHEY_DUPLEX, 0.9, (0, 255, 220), 1, cv2.LINE_AA)
 
     def recv(self, frame: av.VideoFrame) -> av.VideoFrame:
         img = frame.to_ndarray(format="bgr24")
 
-        # Handle UI Commands immediately
+        # ── Handle UI commands ───────────────────────────────
         if self.state.clear_flag:
             self.state.word = ""
-            self.buffer.clear()
+            self.state.sentence = ""
+            self.consec_letter = None
+            self.consec_count  = 0
             self.state.clear_flag = False
-            
+
         if self.state.delete_flag:
             if self.state.word:
                 self.state.word = self.state.word[:-1]
             self.state.delete_flag = False
 
+        if self.state.space_flag:
+            if self.state.word and not self.state.word.endswith(" "):
+                self.state.word += " "
+            self.state.space_flag = False
+            self.space_added = True
+
+        # ── Enhance image quality ────────────────────────────
+        enhanced = self._enhance_frame(img)
+
         if self.model is None:
-            cv2.putText(img, "Model not loaded!", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+            cv2.putText(img, "Model not loaded!", (10, 30),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
             return av.VideoFrame.from_ndarray(img, format="bgr24")
 
-        # Frame skipping for performance (process every 2nd frame)
-        self.frame_count += 1
-        if self.frame_count % 2 == 0:
-            rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
-            
-            timestamp_ms = int(time.time() * 1000)
-            detection_result = self.landmarker.detect_for_video(mp_image, timestamp_ms)
+        # ── Run detection on every frame ─────────────────────
+        rgb = cv2.cvtColor(enhanced, cv2.COLOR_BGR2RGB)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+        timestamp_ms = int(time.time() * 1000)
+        detection_result = self.landmarker.detect_for_video(mp_image, timestamp_ms)
+        self._last_detection = detection_result
 
-            if detection_result.hand_landmarks:
-                hand_lms = detection_result.hand_landmarks[0]
-
-                # Normalization Fix
-                wrist_x, wrist_y, wrist_z = hand_lms[0].x, hand_lms[0].y, hand_lms[0].z
-                landmarks = []
-                for lm in hand_lms:
-                    landmarks.extend([lm.x - wrist_x, lm.y - wrist_y, lm.z - wrist_z])
-                landmarks = np.array(landmarks, dtype=np.float32).reshape(1, -1)
-
-                try:
-                    scaled = self.scaler.transform(landmarks)
-                    probs = self.model.predict(scaled, verbose=0)[0]
-                    pred_idx = int(np.argmax(probs))
-                    self.state.confidence = float(probs[pred_idx])
-                    self.state.letter = str(self.encoder.inverse_transform([pred_idx])[0])
-                except Exception:
-                    self.state.letter = "-"
-                    self.state.confidence = 0.0
-
-                self.buffer.append(self.state.letter)
-                now = time.time()
-                if len(self.buffer) >= COMMIT_THRESHOLD:
-                    count = sum(1 for l in self.buffer if l == self.state.letter)
-                    if count >= COMMIT_THRESHOLD and self.state.confidence > CONFIDENCE_THRESH and (now - self.last_commit_time) > COMMIT_COOLDOWN_SEC:
-                        self.state.word += self.state.letter
-                        self.last_commit_time = now
-                        self.buffer.clear()
-            else:
-                self.state.letter = "-"
-                self.state.confidence = 0.0
-
-        # Draw skeleton and UI overlay on EVERY frame
         if detection_result.hand_landmarks:
+            self.no_hand_frame_count = 0
+            self.space_added = False
             hand_lms = detection_result.hand_landmarks[0]
-            h, w, _ = img.shape
-            points = [(int(lm.x * w), int(lm.y * h)) for lm in hand_lms]
-            for conn in HAND_CONNECTIONS:
-                cv2.line(img, points[conn[0]], points[conn[1]], (0, 0, 255), 2)
-            for pt in points:
-                cv2.circle(img, pt, 3, (0, 255, 0), -1)
 
-        h, w = img.shape[:2]
-        cv2.rectangle(img, (0, 0), (w, 80), (0, 0, 0), -1)
-        cv2.putText(img, f"Letter: {self.state.letter}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
-        cv2.putText(img, f"Conf: {self.state.confidence*100:.1f}%", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-        
-        cv2.rectangle(img, (0, h - 50), (w, h), (0, 0, 0), -1)
-        cv2.putText(img, f"Word: {self.state.word}", (10, h - 15), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 255), 2)
+            # ── Wrist-relative normalisation (must match training) ───
+            # Training CSV has wrist zeroed: x0=0, y0=0, z0=0 and all
+            # other landmarks are (lm.x - wrist.x, lm.y - wrist.y, lm.z - wrist.z).
+            # Do NOT apply any further scaling — the scaler.pkl handles that.
+            wrist_x = hand_lms[0].x
+            wrist_y = hand_lms[0].y
+            wrist_z = hand_lms[0].z
+            landmarks = []
+            for lm in hand_lms:
+                landmarks.extend([
+                    lm.x - wrist_x,
+                    lm.y - wrist_y,
+                    lm.z - wrist_z,
+                ])
+            landmarks = np.array(landmarks, dtype=np.float32).reshape(1, -1)
+
+            try:
+                scaled = self.scaler.transform(landmarks)
+                probs  = self.model.predict(scaled, verbose=0)[0]
+                pred_idx = int(np.argmax(probs))
+                raw_confidence = float(probs[pred_idx])
+                raw_letter     = str(self.encoder.inverse_transform([pred_idx])[0])
+            except Exception:
+                raw_letter     = "-"
+                raw_confidence = 0.0
+
+            self.state.letter     = raw_letter
+            self.state.confidence = raw_confidence
+
+            # ── Consecutive-frame commit logic ────────────────
+            # Rule: letter must be the SAME and confidence >= threshold
+            # for CONSECUTIVE_REQUIRED frames in a row.
+            # Any deviation resets the counter to zero immediately.
+            now = time.time()
+            if raw_confidence >= CONFIDENCE_THRESH and raw_letter != "-":
+                if raw_letter == self.consec_letter:
+                    self.consec_count += 1
+                else:
+                    # Different letter → start fresh streak
+                    self.consec_letter = raw_letter
+                    self.consec_count  = 1
+            else:
+                # Low confidence or no prediction → break streak
+                self.consec_letter = None
+                self.consec_count  = 0
+
+            # Commit when streak is long enough AND cooldown has passed
+            if (
+                self.consec_count >= CONSECUTIVE_REQUIRED
+                and (now - self.last_commit_time) > COMMIT_COOLDOWN_SEC
+            ):
+                self.state.word      += self.consec_letter
+                self.last_commit_time = now
+                # Reset streak so next letter starts fresh
+                self.consec_letter = None
+                self.consec_count  = 0
+
+            # Draw hand skeleton on original img
+            self._draw_hand(img, hand_lms)
+
+        else:
+            # ── No hand in frame ─────────────────────────────
+            self.no_hand_frame_count += 1
+            self.state.letter     = "-"
+            self.state.confidence = 0.0
+            # Reset streak — user lifted hand to transition
+            self.consec_letter = None
+            self.consec_count  = 0
+
+            # Auto-space after N consecutive no-hand frames
+            if (
+                self.no_hand_frame_count == NO_HAND_FRAMES_FOR_SPACE
+                and self.state.word
+                and not self.state.word.endswith(" ")
+                and not self.space_added
+            ):
+                self.state.word  += " "
+                self.space_added  = True
+
+        # ── Draw HUD ─────────────────────────────────────────
+        self._draw_hud(
+            img,
+            self.state.letter,
+            self.state.confidence,
+            self.state.word,
+            self.consec_count,
+            CONSECUTIVE_REQUIRED,
+        )
 
         return av.VideoFrame.from_ndarray(img, format="bgr24")
 
 
 # ── Page Configuration ───────────────────────────────────────
-st.set_page_config(page_title="ISL to Text & Speech Converter", page_icon="🤟", layout="wide")
+st.set_page_config(
+    page_title="ISL to Text & Speech Converter",
+    page_icon="🤟",
+    layout="wide",
+)
+
+# ── Custom CSS ───────────────────────────────────────────────
+st.markdown("""
+<style>
+    .block-container { padding-top: 1rem; }
+    .word-display {
+        font-size: 2rem;
+        font-weight: bold;
+        text-align: center;
+        color: #00FFD0;
+        background: linear-gradient(135deg, #1a1a2e, #16213e);
+        padding: 20px;
+        border-radius: 12px;
+        border: 1px solid #00FFD066;
+        min-height: 70px;
+        letter-spacing: 4px;
+    }
+    .letter-badge {
+        font-size: 3rem;
+        font-weight: bold;
+        text-align: center;
+        color: #FFD700;
+    }
+    .stButton > button {
+        border-radius: 8px;
+        font-weight: bold;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 with st.sidebar:
     st.markdown("## 🤟 ISL Converter")
     st.markdown("### 📊 Model Info")
-    st.markdown("""
+    st.markdown(f"""
     | Property | Value |
     |----------|-------|
     | **Architecture** | MLP (63→128→64→36) |
-    | **Classes** | 36 (0-9, A-Z) |
+    | **Classes** | 36 (0–9, A–Z) |
     | **Accuracy** | 98.27% |
+    | **Confidence threshold** | {int(CONFIDENCE_THRESH*100)}% |
+    | **Consecutive frames** | {CONSECUTIVE_REQUIRED} |
+    | **Cooldown** | {COMMIT_COOLDOWN_SEC}s |
     """)
-    st.markdown("### 📝 Instructions")
-    st.markdown("1. Click **START** to enable webcam\n2. Show ISL gestures\n3. Use buttons below to control text")
+    st.markdown("### 📝 How to use")
+    st.markdown(
+        "1. Click **START** to enable webcam\n"
+        "2. Show an ISL hand sign steadily\n"
+        "3. Watch the **orange hold bar** on the video fill up\n"
+        "4. Letter commits when the bar is full ✅\n"
+        "5. **Remove hand** briefly → auto-space between words\n"
+        "6. Use **Space / Delete / Clear** buttons as needed\n"
+        "7. Click **🔊 Speak** to hear the word"
+    )
+    st.markdown("---")
+    st.markdown("#### ⚙️ Prediction Settings")
+    st.caption(f"Consecutive frames required: {CONSECUTIVE_REQUIRED} | Confidence: {int(CONFIDENCE_THRESH*100)}% | Cooldown: {COMMIT_COOLDOWN_SEC}s")
 
 st.title("🤟 Indian Sign Language → Text & Speech Converter")
 st.markdown("---")
@@ -203,40 +401,79 @@ with col_left:
         key="isl-stream",
         video_transformer_factory=ISLVideoTransformer,
         rtc_configuration=RTC_CONFIGURATION,
-        media_stream_constraints={"video": True, "audio": False},
+        media_stream_constraints={
+            "video": {
+                "width":  {"ideal": 1280},
+                "height": {"ideal": 720},
+                "frameRate": {"ideal": 30},
+                "facingMode": "user",
+            },
+            "audio": False,
+        },
         async_processing=True,
     )
 
 with col_right:
-    st.subheader("🎯 Controls")
+    st.subheader("🎯 Controls & Output")
     state = app_state
 
     if ctx and ctx.state.playing:
-        st.markdown("#### ✍️ Current Word")
-        st.markdown(f"<h2 style='text-align: center; color: #00FF00; background-color: #1e1e2e; padding: 15px; border-radius: 10px;'>{state.word}</h2>", unsafe_allow_html=True)
-        
-        st.markdown(f"**Predicted Letter:** `{state.letter}`")
-        st.markdown(f"**Confidence:** `{state.confidence*100:.1f}%`")
-        st.progress(min(state.confidence, 1.0))
+        # Current predicted letter
+        st.markdown("#### 🔤 Predicted Letter")
+        letter_display = state.letter if state.letter != "-" else "—"
+        st.markdown(f"<div class='letter-badge'>{letter_display}</div>", unsafe_allow_html=True)
+        st.progress(min(state.confidence, 1.0), text=f"Confidence: {state.confidence*100:.1f}%")
 
         st.markdown("---")
-        b1, b2, b3 = st.columns(3)
-        
+
+        # Word being built
+        st.markdown("#### ✍️ Current Word / Text")
+        word_display = state.word.strip() if state.word.strip() else "&nbsp;"
+        st.markdown(f"<div class='word-display'>{word_display}</div>", unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        # Action buttons
+        b1, b2, b3, b4 = st.columns(4)
+
         with b1:
             if st.button("🔊 Speak", use_container_width=True):
-                if state.word:
+                text = state.word.strip()
+                if text:
                     with st.spinner("Speaking…"):
-                        speak(state.word)
-                        
+                        speak(text)
+
         with b2:
+            if st.button("␣ Space", use_container_width=True):
+                state.space_flag = True
+
+        with b3:
             if st.button("⬅️ Delete", use_container_width=True):
                 if state.word:
                     state.word = state.word[:-1]
                 state.delete_flag = True
-                
-        with b3:
+
+        with b4:
             if st.button("🗑️ Clear", use_container_width=True):
                 state.word = ""
                 state.clear_flag = True
+
+        # Tips
+        st.markdown("---")
+        st.info(
+            "💡 **Tip:** Watch the **orange 'Hold' bar** on the camera feed — "
+            "keep your hand sign steady until it fills completely. "
+            "Remove your hand briefly to insert a space."
+        )
+
     else:
         st.info("👈 Click **START** in the webcam panel to begin.")
+        st.markdown("""
+        #### 📌 Quick Guide
+        - Hold each sign **steadily** for ~1–2 seconds
+        - Watch the orange **Hold bar** on the video fill up
+        - Letter is committed only when the bar is **completely full**
+        - Ensure **good lighting** on your hand
+        - Keep hand **fully visible** in the frame
+        - Remove hand to **add a space** automatically
+        """)
